@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.example.bei_realtime_app" // ganti sama package kamu
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "25.1.8937393" // ini yg diubah
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
