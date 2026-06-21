@@ -12,22 +12,28 @@ class _BeiPageState extends State<BeiPage> {
   bool isMarketOpen = false;
 
   bool checkMarketHours() {
-    final now = DateTime.now();
-    final hour = now.hour;
-    final minute = now.minute;
-    final weekday = now.weekday; // 1 = Senin, 7 = Minggu
-    
-    if (weekday == 6 || weekday == 7) return false; // Weekend
-    // Sesi 1: 09:00-11:30
-    if (hour > 9 && hour < 11) return true;
-    if (hour == 9 && minute >= 0) return true;
-    if (hour == 11 && minute <= 30) return true;
-    // Sesi 2: 13:30-15:49
-    if (hour == 13 && minute >= 30) return true;
-    if (hour == 14) return true;
-    if (hour == 15 && minute <= 49) return true;
-    return false;
+  final now = DateTime.now();
+  final hour = now.hour;
+  final minute = now.minute;
+  final weekday = now.weekday; // 1 = Senin, 7 = Minggu
+
+  if (weekday == 6 || weekday == 7) return false; // Weekend
+
+  // Sesi 1: 09:00 - 11:30
+  final sesi1Start = hour > 9 || (hour == 9 && minute >= 0);
+  final sesi1End = hour < 11 || (hour == 11 && minute <= 30);
+  final sesi1 = sesi1Start && sesi1End;
+
+  // Sesi 2: Senin-Kamis 13:30-14:50, Jumat 14:00-14:50
+  bool sesi2 = false;
+  if (weekday >= 1 && weekday <= 4) { // Senin-Kamis
+    sesi2 = (hour == 13 && minute >= 30) || (hour == 14);
+  } else if (weekday == 5) { // Jumat
+    sesi2 = hour == 14;
   }
+
+  return sesi1 || sesi2;
+}
 
   void _startFeed() {
     engine.startFeed();
