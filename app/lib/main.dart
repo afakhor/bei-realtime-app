@@ -9,7 +9,6 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -22,30 +21,24 @@ class MyApp extends StatelessWidget {
 
 class BeiPage extends StatefulWidget {
   const BeiPage({super.key});
-
   @override
   State<BeiPage> createState() => _BeiPageState();
 }
 
 class _BeiPageState extends State<BeiPage> {
   final engine = BeiEngine();
-  final List<FlSpot> spots = [];
   Timer? timer;
-  double x = 0;
-  String lastTick = '0';
   bool isMarketOpen = false;
+  Map<String, String> prices = {}; // {"BBCA": "10250",...}
 
   bool checkMarketHours() {
     final now = DateTime.now();
     final hour = now.hour;
     final minute = now.minute;
     final weekday = now.weekday; // 1 = Senin, 7 = Minggu
-
     if (weekday == 6 || weekday == 7) return false;
-
     bool sesi1 = (hour > 9 || (hour == 9 && minute >= 0)) &&
         (hour < 11 || (hour == 11 && minute <= 30));
-
     bool sesi2 = false;
     if (weekday >= 1 && weekday <= 4) {
       sesi2 = (hour == 13 && minute >= 30) || (hour == 14);
@@ -59,14 +52,8 @@ class _BeiPageState extends State<BeiPage> {
     engine.startFeed();
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
-        lastTick = engine.getLastTick();
         isMarketOpen = checkMarketHours();
-        final price = double.tryParse(lastTick) ?? 0;
-        if (price > 0) {
-          spots.add(FlSpot(x, price));
-          if (spots.length > 120) spots.removeAt(0);
-          x += 1;
-        }
+        prices = engine.getAllTicks(); // ambil semua saham 1x panggil
       });
     });
   }
@@ -85,61 +72,39 @@ class _BeiPageState extends State<BeiPage> {
 
   @override
   Widget build(BuildContext context) {
+    final codes = prices.keys.toList()..sort();
     return Scaffold(
       appBar: AppBar(
         title: const Text('BEI Realtime'),
-        backgroundColor: isMarketOpen ? Colors.green : Colors.red,
+        backgroundColor: isMarketOpen? Colors.green : Colors.red,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Icon(Icons.circle, color: isMarketOpen? Colors.greenAccent : Colors.redAccent, size: 12),
+          )
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.circle, color: isMarketOpen ? Colors.green : Colors.red, size: 12),
-                const SizedBox(width: 8),
-                Text(
-                  isMarketOpen ? 'Market Open' : 'Market Closed - Last Price',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'IHSG: $lastTick',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: spots.isEmpty
-                  ? const Center(child: Text('Menunggu data...'))
-                  : LineChart(
-                      LineChartData(
-                        minY: spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) - 5,
-                        maxY: spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 5,
-                        gridData: const FlGridData(show: true),
-                        titlesData: const FlTitlesData(show: false),
-                        borderData: FlBorderData(show: true),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: spots,
-                            isCurved: true,
-                            color: isMarketOpen ? Colors.green : Colors.orange,
-                            barWidth: 2,
-                            dotData: const FlDotData(show: false),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              color: (isMarketOpen ? Colors.green : Colors.orange).withOpacity(0.2),
-                            ),
-                          ),
-                        ],
-                      ),
+      body: codes.isEmpty
+         ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              itemCount: codes.length,
+              itemBuilder: (context, i) {
+                final code = codes[i];
+                final price = prices[code]?? "0";
+                return ListTile(
+                  dense: true,
+                  title: Text(code, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: Text(
+                    price,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: isMarketOpen? Colors.green[800] : Colors.orange[800],
+                      fontWeight: FontWeight.w500,
                     ),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
-      ),
     );
   }
 }
