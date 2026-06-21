@@ -29,7 +29,7 @@ std::map<std::string, std::deque<Ohlc>> candles_1m; // history 1 menit
 std::deque<Trade> running_trades; // 50 trade terakhir
 std::string all_data_json = "{}";
 std::mutex tick_mutex;
-const char* CACHE_DIR = "/data/data/com.contoh.appbei/";
+const char* CACHE_DIR = "/data/data/com.saham.heruwingchun/";
 const int MAX_CANDLES = 390; // 6.5 jam trading
 const int MAX_TRADES = 50;
 
