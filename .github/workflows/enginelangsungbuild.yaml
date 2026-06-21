@@ -22,12 +22,13 @@ jobs:
           mkdir -p build && cd build
           cmake ..
           make
-          ls -la libbei_engine.so
+          echo "Cari .so di jniLibs:"
+          find ../../app/android -name "libbei_engine.so"
       
       - name: Copy.so to Flutter assets
         run: |
           mkdir -p app/assets
-          cp engine/build/libbei_engine.so app/assets/
+          cp app/android/app/src/main/jniLibs/arm64-v8a/libbei_engine.so app/assets/
           ls -la app/assets/
       
       # ===== Build Flutter APK =====
