@@ -6,92 +6,125 @@
 #include <ctime>
 #include <mutex>
 #include <cstdlib>
+#include <map>
+#include <vector>
+
+struct Ohlc {
+    int open = 0;
+    int high = 0;
+    int low = 0;
+    int close = 0;
+};
 
 std::atomic<bool> running(false);
-std::string last_tick = "0";
+std::map<std::string, Ohlc> last_ticks; // BBCA -> Ohlc
+std::string all_ticks_json = "{}";
 std::mutex tick_mutex;
-// GANTI: samain sama applicationId di build.gradle.kts
-const char* CACHE_FILE = "/data/data/com.contoh.appbei/last_tick.txt";
+const char* CACHE_DIR = "/data/data/com.contoh.appbei/";
 
-bool isMarketOpen() {
-    time_t now = time(0);
-    tm *ltm = localtime(&now);
-    int hour = ltm->tm_hour;
-    int minute = ltm->tm_min;
-    int wday = ltm->tm_wday; // 0 = Minggu, 1 = Senin, ..., 6 = Sabtu
-    
-    if (wday == 0 || wday == 6) return false; // Weekend
+const std::vector<std::string> WATCHLIST = {
+    "IHSG", "LQ45", "BBCA", "BBRI", "BMRI", "TLKM", "ASII", "GOTO"
+};
 
-    // Sesi 1: 09:00 - 11:30
-    bool sesi1 = (hour > 9 || (hour == 9 && minute >= 0)) && 
-                 (hour < 11 || (hour == 11 && minute <= 30));
+bool isMarketOpen() { /* sama kayak tadi */ }
 
-    // Sesi 2: Senin-Kamis 13:30-14:50, Jumat 14:00-14:50
-    bool sesi2 = false;
-    if (wday >= 1 && wday <= 4) { // Senin-Kamis
-        sesi2 = (hour == 13 && minute >= 30) || (hour == 14);
-    } else if (wday == 5) { // Jumat
-        sesi2 = (hour == 14);
-    }
-
-    return sesi1 || sesi2;
-}
-
-void saveToCache(const std::string& data) {
+void saveToCache(const std::string& code, const Ohlc& data) {
     std::lock_guard<std::mutex> lock(tick_mutex);
-    std::ofstream file(CACHE_FILE);
+    std::string path = std::string(CACHE_DIR) + code + ".txt";
+    std::ofstream file(path);
     if (file.is_open()) {
-        file << data;
+        // Format: O,H,L,C
+        file << data.open << "," << data.high << "," << data.low << "," << data.close;
         file.close();
     }
 }
 
-std::string loadFromCache() {
+Ohlc loadFromCache(const std::string& code) {
     std::lock_guard<std::mutex> lock(tick_mutex);
-    std::ifstream file(CACHE_FILE);
-    std::string data = "7000"; // default kalau file belum ada
-    if (file.is_open()) {
-        std::getline(file, data);
+    std::string path = std::string(CACHE_DIR) + code + ".txt";
+    std::ifstream file(path);
+    Ohlc data;
+    std::string line;
+    if (file.is_open() && std::getline(file, line)) {
+        sscanf(line.c_str(), "%d,%d,%d,%d", &data.open, &data.high, &data.low, &data.close);
         file.close();
+    } else {
+        data.open = data.high = data.low = data.close = 1000; // default
     }
     return data;
 }
 
+void updateJson() {
+    std::string json = "{";
+    bool first = true;
+    for (auto const& [code, ohlc] : last_ticks) {
+        if (!first) json += ",";
+        json += "\"" + code + "\":{\"o\":" + std::to_string(ohlc.open) +
+                ",\"h\":" + std::to_string(ohlc.high) +
+                ",\"l\":" + std::to_string(ohlc.low) +
+                ",\"c\":" + std::to_string(ohlc.close) + "}";
+        first = false;
+    }
+    json += "}";
+    all_ticks_json = json;
+}
+
+bool isNewDay() {
+    static int last_day = -1;
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+    if (ltm->tm_mday!= last_day) {
+        last_day = ltm->tm_mday;
+        return true;
+    }
+    return false;
+}
+
 void feed_loop() {
-    int price = std::stoi(loadFromCache()); // mulai dari cache terakhir
+    for (const auto& code : WATCHLIST) {
+        last_ticks[code] = loadFromCache(code);
+    }
+    updateJson();
+
     while (running) {
         if (isMarketOpen()) {
-            // TODO: ganti ini sama koneksi BEI asli
-            price += rand() % 10 - 4;
-            last_tick = std::to_string(price);
-            saveToCache(last_tick); // update cache cuma pas market buka
+            bool resetOhlc = isNewDay(); // reset O,H,L,C pas ganti hari
+            for (auto& [code, ohlc] : last_ticks) {
+                int newPrice = ohlc.close + rand() % 10 - 4; // TODO: data BEI asli
+                if (newPrice < 1) newPrice = 1;
+
+                if (resetOhlc || ohlc.open == 0) {
+                    ohlc.open = newPrice;
+                    ohlc.high = newPrice;
+                    ohlc.low = newPrice;
+                }
+                if (newPrice > ohlc.high) ohlc.high = newPrice;
+                if (newPrice < ohlc.low) ohlc.low = newPrice;
+                ohlc.close = newPrice;
+
+                saveToCache(code, ohlc);
+            }
         } else {
-            // market tutup, last_tick tetap nilai dari cache
-            last_tick = loadFromCache();
+            for (auto& [code, ohlc] : last_ticks) {
+                last_ticks[code] = loadFromCache(code);
+            }
         }
+        updateJson();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
 
 extern "C" {
-
-__attribute__((visibility("default"))) __attribute__((used))
-int32_t native_add(int32_t a, int32_t b) {
-    return a + b;
-}
-
 __attribute__((visibility("default"))) __attribute__((used))
 void start_feed() {
     if (!running) {
         running = true;
-        last_tick = loadFromCache(); // langsung load biar ga 0
         std::thread(feed_loop).detach();
     }
 }
 
 __attribute__((visibility("default"))) __attribute__((used))
-const char* get_last_tick() {
-    return last_tick.c_str();
+const char* get_all_ticks() {
+    return all_ticks_json.c_str();
 }
-
 }
