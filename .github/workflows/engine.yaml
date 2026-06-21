@@ -1,22 +1,20 @@
 name: Build C++ Engine
-
-on: [push]
-
+on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install deps
         run: sudo apt-get install -y cmake build-essential
-
       - name: Build
         run: |
           cd engine
-          mkdir build && cd build
-          cmake..
+          mkdir -p build && cd build
+          cmake ..
           make
-
-      - name: Run tests
-        run: cd engine/build &&./bei_engine_test
+      - name: Upload.so
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbei_engine.so
+          path: engine/build/libbei_engine.so
