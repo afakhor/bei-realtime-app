@@ -1,0 +1,51 @@
+name: Build BEI Realtime App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # ===== Build C++ Engine =====
+      - name: Install C++ deps
+        run: sudo apt-get install -y cmake build-essential
+      
+      - name: Build libbei_engine.so
+        run: |
+          cd engine
+          mkdir -p build && cd build
+          cmake ..
+          make
+          ls -la libbei_engine.so
+      
+      - name: Copy.so to Flutter assets
+        run: |
+          mkdir -p app/assets
+          cp engine/build/libbei_engine.so app/assets/
+          ls -la app/assets/
+      
+      # ===== Build Flutter APK =====
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          cache: true
+      
+      - name: Get Flutter packages
+        run: cd app && flutter pub get
+      
+      - name: Build APK Release
+        run: cd app && flutter build apk --release
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bei-realtime-app.apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
