@@ -1,20 +1,26 @@
-name: Build C++ Engine
+name: Build All
 on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install deps
-        run: sudo apt-get install -y cmake build-essential
-      - name: Build
+      
+      - name: Build C++
         run: |
-          cd engine
-          mkdir -p build && cd build
+          sudo apt-get install -y cmake build-essential
+          cd engine && mkdir -p build && cd build
           cmake ..
           make
-      - name: Upload.so
-        uses: actions/upload-artifact@v4
+          mkdir -p ../../app/assets
+          cp libbei_engine.so ../../app/assets/
+      
+      - uses: subosito/flutter-action@v2
         with:
-          name: libbei_engine.so
-          path: engine/build/libbei_engine.so
+          flutter-version: '3.24.0'
+      - run: cd app && flutter pub get
+      - run: cd app && flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bei-realtime-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
