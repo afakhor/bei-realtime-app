@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.bei_realtime_app" // ganti sama package kamu
+    namespace = "com.saham.heruwingchun" // ganti sama package kamu
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "25.1.8937393" // ini yg diubah
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.bei_realtime_app" // ganti sama package kamu
+        applicationId = "com.saham.heruwingchun" // ganti sama package kamu
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
