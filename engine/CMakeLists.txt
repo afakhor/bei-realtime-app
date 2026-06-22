@@ -5,5 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_library(bei_engine SHARED src/bridge.cpp)
 
-find_library(log-lib log)
-target_link_libraries(bei_engine ${log-lib})
+# log-lib cuma ada di Android
+if(ANDROID)
+    find_library(log-lib log)
+    target_link_libraries(bei_engine ${log-lib})
+endif()
