@@ -5,9 +5,9 @@ plugins {
 }
 
 android {
-    namespace = "com.saham.heruwingchun" // ganti sama package kamu
+    namespace = "com.saham.heruwingchun"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "25.1.8937393" // ini yg diubah
+    ndkVersion = "25.1.8937393"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -19,11 +19,17 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.saham.heruwingchun" // ganti sama package kamu
+        applicationId = "com.saham.heruwingchun"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("../../../engine/CMakeLists.txt")
+        }
     }
 
     buildTypes {
