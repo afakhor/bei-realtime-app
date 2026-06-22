@@ -26,5 +26,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  assets:
-    - assets/libbei_engine.so  # taro .so C++ di sini biar kebundle ke APK
+  #assets:
+   # - assets/libbei_engine.so  # taro .so C++ di sini biar kebundle ke APK
