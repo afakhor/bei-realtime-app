@@ -1,39 +1,42 @@
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:convert';
-import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart';
 
 typedef StartFeedC = Void Function();
-typedef StartFeedDart = void Function();
-typedef GetAllDataC = Pointer<Utf8> Function();
-typedef GetAllDataDart = Pointer<Utf8> Function();
-typedef GetCandlesC = Pointer<Utf8> Function(Pointer<Utf8>);
-typedef GetCandlesDart = Pointer<Utf8> Function(Pointer<Utf8>);
+typedef GetDataC = Pointer<Utf8> Function();
 
-class BeiEngine {
+class EngineBridge {
   late final DynamicLibrary _lib;
-  late final StartFeedDart startFeed;
-  late final GetAllDataDart _getAllData;
-  late final GetCandlesDart _getCandles;
+  late final void Function() _startFeed;
+  late final Pointer<Utf8> Function() _getData;
 
-  BeiEngine() {
-    _lib = Platform.isAndroid? DynamicLibrary.open('libbei_engine.so') : DynamicLibrary.process();
-    startFeed = _lib.lookupFunction<StartFeedC, StartFeedDart>('start_feed');
-    _getAllData = _lib.lookupFunction<GetAllDataC, GetAllDataDart>('get_all_data');
-    _getCandles = _lib.lookupFunction<GetCandlesC, GetCandlesDart>('get_candles');
+  EngineBridge() {
+    try {
+      if (Platform.isAndroid) {
+        _lib = DynamicLibrary.open('libbei_engine.so');
+      } else {
+        _lib = DynamicLibrary.process();
+      }
+      debugPrint('FFI: libbei_engine.so berhasil di-load');
+    } catch (e) {
+      debugPrint('FFI ERROR: gagal load libbei_engine.so: $e');
+      rethrow;
+    }
+
+    _startFeed = _lib.lookupFunction<StartFeedC, StartFeedC>('start_feed');
+    _getData = _lib.lookupFunction<GetDataC, GetDataC>('get_all_data');
+  }
+
+  void startFeed() {
+    debugPrint('FFI: panggil start_feed()');
+    _startFeed();
   }
 
   Map<String, dynamic> getAllData() {
-    final ptr = _getAllData();
-    final jsonStr = ptr.toDartString();
-    return jsonDecode(jsonStr);
-  }
-
-  List<dynamic> getCandles(String code) {
-    final codePtr = code.toNativeUtf8();
-    final ptr = _getCandles(codePtr);
-    final jsonStr = ptr.toDartString();
-    malloc.free(codePtr);
-    return jsonDecode(jsonStr);
+    final ptr = _getData();
+    final str = ptr.toDartString();
+    debugPrint('FFI: get_all_data() return: $str');
+    return jsonDecode(str);
   }
 }
